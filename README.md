@@ -1,4 +1,4 @@
-A plugin to .
+A plugin to search for files in a directory, based on specific patterns like file types, filenames, or directories.
 
 # Usage
 
@@ -6,6 +6,10 @@ The following settings changes this plugin's behavior.
 
 * param1 (optional) does something.
 * param2 (optional) does something different.
+
+# Output
+
+lastModified formatted as RFC3339
 
 Below is an example `.drone.yml` that uses this plugin.
 

@@ -1,0 +1,4 @@
+.env
+release/
+.vscode/
+drone_output.properties

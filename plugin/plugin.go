@@ -10,8 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
+	"time"
 
+	"github.com/mattn/go-zglob"
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,18 +38,20 @@ type FileInfo struct {
 	Path         string `json:"path"`
 	IsDirectory  bool   `json:"isDirectory"`
 	Length       int64  `json:"length"`
-	LastModified int64  `json:"lastModified"`
+	LastModified string `json:"lastModified"`
 }
 
 // Exec executes the plugin.
 func Exec(ctx context.Context, args Args) error {
-
 	if err := validateArgs((args)); err != nil {
 		return err
 	}
 
-	if args.TargetDir == "" {
-		args.TargetDir = "."
+	if args.TargetDir != "" {
+		err := os.Chdir(args.TargetDir)
+		if err != nil {
+			return err
+		}
 	}
 
 	logger := logrus.
@@ -57,47 +60,72 @@ func Exec(ctx context.Context, args Args) error {
 		WithField("dir", args.TargetDir)
 	logger.Infoln("searching files")
 
-	var files []FileInfo
-
-	err := filepath.Walk(args.TargetDir, func(path string, info os.FileInfo, e error) error {
-
-		if e != nil {
-			return e
-		}
-
-		ok, err := filepath.Match(args.Filter, path)
-		if err != nil {
-			return err
-		}
-		if ok {
-			fmt.Printf("match %s\n", path)
-
-			file := FileInfo{
-				Name:         info.Name(),
-				Path:         path,
-				IsDirectory:  info.IsDir(),
-				Length:       info.Size(),
-				LastModified: info.ModTime().Unix(),
-			}
-			files = append(files, file)
-		}
-
-		return nil
-	})
+	files, err := applyFilter(logger, args)
 	if err != nil {
-		logger.Fatal(err)
+		return err
 	}
 
 	jsonOutput, err := json.Marshal(files)
 	if err != nil {
-		logger.Errorf("Error marshalling JSON: %v", err)
-		return err
+		return logError(logger, fmt.Sprintf("Error marshalling JSON: %v", err), err)
 	}
 
 	if err = writeEnvToFile("FILES_INFO", string(jsonOutput)); err != nil {
 		return err
 	}
 	return nil
+}
+
+func applyFilter(logger *logrus.Entry, args Args) ([]FileInfo, error) {
+	var files []FileInfo
+	var empty []FileInfo
+
+	paths, err := zglob.Glob(args.Filter)
+	if err != nil {
+		return empty, logError(logger, fmt.Sprintf("error when searching using glob %s", args.Filter), err)
+	}
+
+	for _, path := range paths {
+		ok, err := zglob.Match(args.Excludes, path)
+		if err != nil {
+			return empty, logError(logger, fmt.Sprintf("error to evaluate excludes on path %s", path), err)
+		}
+		if ok {
+			logger.Debugf("path %s matches exclude criteria %s", path, args.Excludes)
+			continue
+		}
+
+		file, err := getFileInfo(path)
+		if err != nil {
+			return empty, logError(logger, fmt.Sprintf("error to get file info of path %s", path), err)
+		}
+
+		files = append(files, file)
+	}
+
+	return files, nil
+}
+
+func getFileInfo(path string) (FileInfo, error) {
+
+	// RETRIEVE DETAILS ABOUT THE PROVIDED PATH
+	fi, err := os.Lstat(path)
+
+	if err != nil {
+		return FileInfo{}, err
+	}
+	return FileInfo{
+		Name:         fi.Name(),
+		Path:         path,
+		IsDirectory:  fi.IsDir(),
+		Length:       fi.Size(),
+		LastModified: fi.ModTime().Format(time.RFC3339),
+	}, nil
+}
+
+func logError(logger *logrus.Entry, message string, err error) error {
+	logger.Error(message)
+	return err
 }
 
 func validateArgs(args Args) error {
