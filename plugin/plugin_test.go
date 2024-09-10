@@ -33,8 +33,28 @@ func setupFilesAndFolders() string {
 	fatalIf(os.WriteFile(filepath.Join(tempDir, "abc/one.txt"), []byte{}, 0644))
 	fatalIf(os.WriteFile(filepath.Join(tempDir, "abc/one.yml"), []byte{}, 0644))
 	fatalIf(os.WriteFile(filepath.Join(tempDir, "abc/two.txt"), []byte{}, 0644))
+	fatalIf(os.WriteFile(filepath.Join(tempDir, "a.xyz"), []byte{}, 0644))
+	fatalIf(os.WriteFile(filepath.Join(tempDir, "b.xyz"), []byte{}, 0644))
+	fatalIf(os.WriteFile(filepath.Join(tempDir, "a1.xyz"), []byte{}, 0644))
+	fatalIf(os.WriteFile(filepath.Join(tempDir, "b1.xyz"), []byte{}, 0644))
+
+	fatalIf(os.MkdirAll(filepath.Join(tempDir, "abc/test/harness/community"), 0755))
+	fatalIf(os.WriteFile(filepath.Join(tempDir, "abc/test/harness/community/main.go"), []byte{}, 0644))
+	fatalIf(os.WriteFile(filepath.Join(tempDir, "abc/test/harness/community/go.mod"), []byte{}, 0644))
+	fatalIf(os.WriteFile(filepath.Join(tempDir, "abc/test/harness/community/go.sum"), []byte{}, 0644))
 
 	return tempDir
+}
+
+// setupCurrentDir prepare files, folders and change the current directory to a temporary directory.
+func setupCurrentDir() (string, string) {
+	tempdir := setupFilesAndFolders()
+
+	curdir, err := os.Getwd()
+	fatalIf(err)
+	fatalIf(os.Chdir(tempdir))
+
+	return tempdir, curdir
 }
 
 func Test_validateArg_SunnyDay(t *testing.T) {
@@ -147,13 +167,9 @@ func Test_Exec_ExcludeDir(t *testing.T) {
 }
 
 func Test_Exec_ExcludeFileExtension(t *testing.T) {
-	tempDir := setupFilesAndFolders()
+	tempDir, originalDir := setupCurrentDir()
 	defer os.RemoveAll(tempDir)
-
-	curdir, err := os.Getwd()
-	fatalIf(err)
-	fatalIf(os.Chdir(tempDir))
-	defer os.Chdir(curdir)
+	defer os.Chdir(originalDir)
 
 	args := Args{
 		Filter:    "**/def/*",
@@ -171,6 +187,51 @@ func Test_Exec_ExcludeFileExtension(t *testing.T) {
 	}
 	assert.Contains(t, paths, "abc/def/one.yml")
 	assert.Contains(t, paths, "abc/def/one.xml")
+}
+
+func Test_Exec_SingleCharacter(t *testing.T) {
+	tempDir, originalDir := setupCurrentDir()
+	defer os.RemoveAll(tempDir)
+	defer os.Chdir(originalDir)
+
+	args := Args{
+		Filter:    "?.xyz",
+		TargetDir: tempDir,
+	}
+
+	files, err := applyFilter(NoopLogger(), args)
+	assert.NoError(t, err)
+	assert.Len(t, files, 2)
+
+	var paths []string
+	for _, file := range files {
+		paths = append(paths, file.Path)
+	}
+	assert.Contains(t, paths, "a.xyz")
+	assert.Contains(t, paths, "b.xyz")
+}
+
+func Test_Exec_DirectoryWildcards(t *testing.T) {
+	tempDir, originalDir := setupCurrentDir()
+	defer os.RemoveAll(tempDir)
+	defer os.Chdir(originalDir)
+
+	args := Args{
+		Filter:    "**/harness/**",
+		TargetDir: tempDir,
+	}
+
+	files, err := applyFilter(NoopLogger(), args)
+	assert.NoError(t, err)
+	assert.Len(t, files, 3)
+
+	var paths []string
+	for _, file := range files {
+		paths = append(paths, file.Path)
+	}
+	assert.Contains(t, paths, "abc/test/harness/community/main.go")
+	assert.Contains(t, paths, "abc/test/harness/community/go.mod")
+	assert.Contains(t, paths, "abc/test/harness/community/go.sum")
 }
 
 func NoopLogger() *logrus.Entry {
