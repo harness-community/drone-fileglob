@@ -21,6 +21,35 @@ func fatalIf(err error) {
 	}
 }
 
+func setupRelativeFilesAndFolders() {
+	fatalIf(os.MkdirAll("abc/def", 0755))
+	fatalIf(os.WriteFile("abc/def/one.txt", []byte{}, 0644))
+	fatalIf(os.WriteFile("abc/def/one.yml", []byte{}, 0644))
+	fatalIf(os.WriteFile("abc/def/one.xml", []byte{}, 0644))
+	fatalIf(os.WriteFile("abc/def/two.txt", []byte{}, 0644))
+	fatalIf(os.WriteFile("abc/one.txt", []byte{}, 0644))
+	fatalIf(os.WriteFile("abc/one.yml", []byte{}, 0644))
+	fatalIf(os.WriteFile("abc/two.txt", []byte{}, 0644))
+
+	fatalIf(os.WriteFile("a.xyz", []byte{}, 0644))
+	fatalIf(os.WriteFile("b.xyz", []byte{}, 0644))
+	fatalIf(os.WriteFile("a1.xyz", []byte{}, 0644))
+	fatalIf(os.WriteFile("b1.xyz", []byte{}, 0644))
+
+	fatalIf(os.MkdirAll("abc/test/harness/community", 0755))
+	fatalIf(os.WriteFile("abc/test/harness/community/main.go", []byte{}, 0644))
+	fatalIf(os.WriteFile("abc/test/harness/community/go.mod", []byte{}, 0644))
+	fatalIf(os.WriteFile("abc/test/harness/community/go.sum", []byte{}, 0644))
+}
+
+func cleanupRelativeFilesAndFolders() {
+	os.RemoveAll("abc")
+	os.Remove("a.xyz")
+	os.Remove("b.xyz")
+	os.Remove("a1.xyz")
+	os.Remove("b1.xyz")
+}
+
 func setupFilesAndFolders() string {
 	tempDir, err := os.MkdirTemp("", "fileglob")
 	fatalIf(err)
@@ -44,17 +73,6 @@ func setupFilesAndFolders() string {
 	fatalIf(os.WriteFile(filepath.Join(tempDir, "abc/test/harness/community/go.sum"), []byte{}, 0644))
 
 	return tempDir
-}
-
-// setupCurrentDir prepare files, folders and change the current directory to a temporary directory.
-func setupCurrentDir() (string, string) {
-	tempdir := setupFilesAndFolders()
-
-	curdir, err := os.Getwd()
-	fatalIf(err)
-	fatalIf(os.Chdir(tempdir))
-
-	return tempdir, curdir
 }
 
 func Test_validateArg_SunnyDay(t *testing.T) {
@@ -110,17 +128,15 @@ func Test_fileInfo_File(t *testing.T) {
 	assert.Equal(t, expectedTime, fi.LastModified)
 }
 
-func Test_Exec_NoExcludes(t *testing.T) {
+// --
+// ABSOLUTE PATTERN & PATH
+
+func Test_Exec_Absolute_NoExcludes(t *testing.T) {
 	tempDir := setupFilesAndFolders()
 	defer os.RemoveAll(tempDir)
 
-	curdir, err := os.Getwd()
-	fatalIf(err)
-	fatalIf(os.Chdir(tempDir))
-	defer os.Chdir(curdir)
-
 	args := Args{
-		Filter:    "**/*.txt",
+		Filter:    "/**/*.txt",
 		Excludes:  "",
 		TargetDir: tempDir,
 	}
@@ -133,24 +149,19 @@ func Test_Exec_NoExcludes(t *testing.T) {
 	for _, file := range files {
 		paths = append(paths, file.Path)
 	}
-	assert.Contains(t, paths, "abc/def/one.txt")
-	assert.Contains(t, paths, "abc/def/two.txt")
-	assert.Contains(t, paths, "abc/one.txt")
-	assert.Contains(t, paths, "abc/two.txt")
+	assert.Contains(t, paths, filepath.Join(tempDir, "abc/def/one.txt"))
+	assert.Contains(t, paths, filepath.Join(tempDir, "abc/def/two.txt"))
+	assert.Contains(t, paths, filepath.Join(tempDir, "abc/one.txt"))
+	assert.Contains(t, paths, filepath.Join(tempDir, "abc/two.txt"))
 }
 
-func Test_Exec_ExcludeDir(t *testing.T) {
+func Test_Exec_Absolute_ExcludeDir(t *testing.T) {
 	tempDir := setupFilesAndFolders()
 	defer os.RemoveAll(tempDir)
 
-	curdir, err := os.Getwd()
-	fatalIf(err)
-	fatalIf(os.Chdir(tempDir))
-	defer os.Chdir(curdir)
-
 	args := Args{
-		Filter:    "**/*.txt",
-		Excludes:  "**/def/*",
+		Filter:    "/**/*.txt",
+		Excludes:  "/**/def/*",
 		TargetDir: tempDir,
 	}
 
@@ -162,18 +173,17 @@ func Test_Exec_ExcludeDir(t *testing.T) {
 	for _, file := range files {
 		paths = append(paths, file.Path)
 	}
-	assert.Contains(t, paths, "abc/one.txt")
-	assert.Contains(t, paths, "abc/two.txt")
+	assert.Contains(t, paths, filepath.Join(tempDir, "abc/one.txt"))
+	assert.Contains(t, paths, filepath.Join(tempDir, "abc/two.txt"))
 }
 
-func Test_Exec_ExcludeFileExtension(t *testing.T) {
-	tempDir, originalDir := setupCurrentDir()
+func Test_Exec_Absolute_ExcludeFileExtension(t *testing.T) {
+	tempDir := setupFilesAndFolders()
 	defer os.RemoveAll(tempDir)
-	defer os.Chdir(originalDir)
 
 	args := Args{
-		Filter:    "**/def/*",
-		Excludes:  "**/*.txt",
+		Filter:    "/**/def/*",
+		Excludes:  "/**/*.txt",
 		TargetDir: tempDir,
 	}
 
@@ -185,18 +195,63 @@ func Test_Exec_ExcludeFileExtension(t *testing.T) {
 	for _, file := range files {
 		paths = append(paths, file.Path)
 	}
-	assert.Contains(t, paths, "abc/def/one.yml")
-	assert.Contains(t, paths, "abc/def/one.xml")
+	assert.Contains(t, paths, filepath.Join(tempDir, "abc/def/one.yml"))
+	assert.Contains(t, paths, filepath.Join(tempDir, "abc/def/one.xml"))
 }
 
-func Test_Exec_SingleCharacter(t *testing.T) {
-	tempDir, originalDir := setupCurrentDir()
+func Test_Exec_AbsoluteSingleCharacter(t *testing.T) {
+	tempDir := setupFilesAndFolders()
 	defer os.RemoveAll(tempDir)
-	defer os.Chdir(originalDir)
 
 	args := Args{
-		Filter:    "?.xyz",
+		Filter:    "/**/?.xyz",
 		TargetDir: tempDir,
+	}
+
+	files, err := applyFilter(NoopLogger(), args)
+	assert.NoError(t, err)
+	assert.Len(t, files, 2)
+
+	var paths []string
+	for _, file := range files {
+		paths = append(paths, file.Path)
+	}
+	assert.Contains(t, paths, filepath.Join(tempDir, "a.xyz"))
+	assert.Contains(t, paths, filepath.Join(tempDir, "b.xyz"))
+}
+
+func Test_Exec_AbsoluteDirectoryWildcards(t *testing.T) {
+	tempDir := setupFilesAndFolders()
+	defer os.RemoveAll(tempDir)
+
+	args := Args{
+		Filter:    "/**/harness/**",
+		TargetDir: tempDir,
+	}
+
+	files, err := applyFilter(NoopLogger(), args)
+	assert.NoError(t, err)
+	assert.Len(t, files, 4)
+
+	var paths []string
+	for _, file := range files {
+		paths = append(paths, file.Path)
+	}
+	assert.Contains(t, paths, filepath.Join(tempDir, "abc/test/harness/community"))
+	assert.Contains(t, paths, filepath.Join(tempDir, "abc/test/harness/community/main.go"))
+	assert.Contains(t, paths, filepath.Join(tempDir, "abc/test/harness/community/go.mod"))
+	assert.Contains(t, paths, filepath.Join(tempDir, "abc/test/harness/community/go.sum"))
+}
+
+// --
+// RELATIVE PATTERN & PATH
+
+func Test_Exec_RelativeSingleCharacter(t *testing.T) {
+	setupRelativeFilesAndFolders()
+	defer cleanupRelativeFilesAndFolders()
+
+	args := Args{
+		Filter: "?.xyz",
 	}
 
 	files, err := applyFilter(NoopLogger(), args)
@@ -211,27 +266,91 @@ func Test_Exec_SingleCharacter(t *testing.T) {
 	assert.Contains(t, paths, "b.xyz")
 }
 
-func Test_Exec_DirectoryWildcards(t *testing.T) {
-	tempDir, originalDir := setupCurrentDir()
-	defer os.RemoveAll(tempDir)
-	defer os.Chdir(originalDir)
+func Test_Exec_RelativeDirectoryWildcards(t *testing.T) {
+	setupRelativeFilesAndFolders()
+	defer cleanupRelativeFilesAndFolders()
 
 	args := Args{
-		Filter:    "**/harness/**",
-		TargetDir: tempDir,
+		Filter: "**/harness/**",
 	}
 
 	files, err := applyFilter(NoopLogger(), args)
 	assert.NoError(t, err)
-	assert.Len(t, files, 3)
+	assert.Len(t, files, 4)
 
 	var paths []string
 	for _, file := range files {
 		paths = append(paths, file.Path)
 	}
+	assert.Contains(t, paths, "abc/test/harness/community")
 	assert.Contains(t, paths, "abc/test/harness/community/main.go")
 	assert.Contains(t, paths, "abc/test/harness/community/go.mod")
 	assert.Contains(t, paths, "abc/test/harness/community/go.sum")
+}
+
+func Test_Exec_Relative_ExcludeFileExtension(t *testing.T) {
+	setupRelativeFilesAndFolders()
+	defer cleanupRelativeFilesAndFolders()
+
+	args := Args{
+		Filter:   "**/def/*",
+		Excludes: "**/*.txt",
+	}
+
+	files, err := applyFilter(NoopLogger(), args)
+	assert.NoError(t, err)
+	assert.Len(t, files, 2)
+
+	var paths []string
+	for _, file := range files {
+		paths = append(paths, file.Path)
+	}
+	assert.Contains(t, paths, "abc/def/one.yml")
+	assert.Contains(t, paths, "abc/def/one.xml")
+}
+
+func Test_Exec_Relative_ExcludeDir(t *testing.T) {
+	setupRelativeFilesAndFolders()
+	defer cleanupRelativeFilesAndFolders()
+
+	args := Args{
+		Filter:   "**/*.txt",
+		Excludes: "**/def/*",
+	}
+
+	files, err := applyFilter(NoopLogger(), args)
+	assert.NoError(t, err)
+	assert.Len(t, files, 2)
+
+	var paths []string
+	for _, file := range files {
+		paths = append(paths, file.Path)
+	}
+	assert.Contains(t, paths, "abc/one.txt")
+	assert.Contains(t, paths, "abc/two.txt")
+}
+
+func Test_Exec_Relative_NoExcludes(t *testing.T) {
+	setupRelativeFilesAndFolders()
+	defer cleanupRelativeFilesAndFolders()
+
+	args := Args{
+		Filter:   "**/*.txt",
+		Excludes: "",
+	}
+
+	files, err := applyFilter(NoopLogger(), args)
+	assert.NoError(t, err)
+	assert.Len(t, files, 4)
+
+	var paths []string
+	for _, file := range files {
+		paths = append(paths, file.Path)
+	}
+	assert.Contains(t, paths, "abc/def/one.txt")
+	assert.Contains(t, paths, "abc/def/two.txt")
+	assert.Contains(t, paths, "abc/one.txt")
+	assert.Contains(t, paths, "abc/two.txt")
 }
 
 func NoopLogger() *logrus.Entry {

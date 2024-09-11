@@ -10,9 +10,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
-	"github.com/mattn/go-zglob"
+	"github.com/georgeJobs/go-antpathmatcher"
 	"github.com/sirupsen/logrus"
 )
 
@@ -47,13 +48,6 @@ func Exec(ctx context.Context, args Args) error {
 		return err
 	}
 
-	if args.TargetDir != "" {
-		err := os.Chdir(args.TargetDir)
-		if err != nil {
-			return err
-		}
-	}
-
 	logger := logrus.
 		WithField("glob", args.Filter).
 		WithField("excludes", args.Excludes).
@@ -78,29 +72,32 @@ func Exec(ctx context.Context, args Args) error {
 
 func applyFilter(logger *logrus.Entry, args Args) ([]FileInfo, error) {
 	var files []FileInfo
-	var empty []FileInfo
+	m := antpathmatcher.NewAntPathMatcher()
 
-	paths, err := zglob.Glob(args.Filter)
-	if err != nil {
-		return empty, logError(logger, fmt.Sprintf("error when searching using glob %s", args.Filter), err)
+	if args.TargetDir == "" {
+		args.TargetDir = "."
 	}
 
-	for _, path := range paths {
-		ok, err := zglob.Match(args.Excludes, path)
-		if err != nil {
-			return empty, logError(logger, fmt.Sprintf("error to evaluate excludes on path %s", path), err)
-		}
-		if ok {
-			logger.Debugf("path %s matches exclude criteria %s", path, args.Excludes)
-			continue
+	err := filepath.WalkDir(args.TargetDir, func(path string, d os.DirEntry, e error) error {
+
+		if m.Match(args.Filter, path) {
+			if m.Match(args.Excludes, path) {
+				logger.Debugf("path %s match exclude criteria %s", path, args.Excludes)
+
+			} else {
+				file, err := getFileInfo(path)
+				if err != nil {
+					return logError(logger, fmt.Sprintf("error to get file info of path %s", path), err)
+				}
+
+				files = append(files, file)
+			}
 		}
 
-		file, err := getFileInfo(path)
-		if err != nil {
-			return empty, logError(logger, fmt.Sprintf("error to get file info of path %s", path), err)
-		}
-
-		files = append(files, file)
+		return nil
+	})
+	if err != nil {
+		return []FileInfo{}, err
 	}
 
 	return files, nil
