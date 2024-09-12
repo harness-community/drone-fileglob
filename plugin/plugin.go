@@ -25,7 +25,7 @@ type Args struct {
 	Level string `envconfig:"PLUGIN_LOG_LEVEL"`
 
 	// Ant style pattern Glob pattern to search for files. (required)
-	Filter string `envconfig:"PLUGIN_GLOB"`
+	Filter string `envconfig:"PLUGIN_FILTER"`
 
 	// Glob pattern to exclude files from the search (optional) (default: none)
 	Excludes string `envconfig:"PLUGIN_EXCLUDES"`
@@ -127,7 +127,7 @@ func logError(logger *logrus.Entry, message string, err error) error {
 
 func validateArgs(args Args) error {
 	if args.Filter == "" {
-		return errors.New("filter glob is empty")
+		return errors.New("filter is empty")
 	}
 	return nil
 }

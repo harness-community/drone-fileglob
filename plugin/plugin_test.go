@@ -85,7 +85,7 @@ func Test_validateArg_SunnyDay(t *testing.T) {
 func Test_validateArg_MissingFilter(t *testing.T) {
 	err := validateArgs(Args{})
 
-	assert.EqualError(t, err, "filter glob is empty")
+	assert.EqualError(t, err, "filter is empty")
 }
 
 func Test_fileInfo_FileNotExist(t *testing.T) {
