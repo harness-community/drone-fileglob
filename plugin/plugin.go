@@ -129,9 +129,13 @@ func validateArgs(args Args) error {
 	if args.Filter == "" {
 		return errors.New("filter is empty")
 	}
+	if os.Getenv("DRONE_OUTPUT") == "" {
+		return errors.New("missing DRONE_OUTPUT environment variable")
+	}
 	return nil
 }
 
+// writeEnvToFile uses the Drone environment variable DRONE_OUTPUT to write the search result
 func writeEnvToFile(key, value string) error {
 	outputFile, err := os.OpenFile(os.Getenv("DRONE_OUTPUT"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
