@@ -6,6 +6,6 @@ FROM scratch
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-ADD release/linux/arm64/drone-findfiles /bin/
+ADD release/linux/amd64/drone-findfiles /bin/
 
 ENTRYPOINT ["/bin/drone-findfiles"]
