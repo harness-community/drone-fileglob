@@ -18,8 +18,8 @@ kind: pipeline
 name: default
 
 steps:
-- name: run drone/drone-fileglob plugin
-  image: drone/drone-fileglob
+- name: run drone/drone-findfiles plugin
+  image: drone/drone-findfiles
   pull: if-not-exists
   settings:
     param1: foo
@@ -37,7 +37,7 @@ scripts/build.sh
 Build the plugin image:
 
 ```text
-docker build -t drone/drone-fileglob -f docker/Dockerfile .
+docker build -t drone/drone-findfiles -f docker/Dockerfile .
 ```
 
 # Testing
@@ -52,5 +52,5 @@ docker run --rm -e PLUGIN_PARAM1=foo -e PLUGIN_PARAM2=bar \
   -e DRONE_BUILD_STATUS=success \
   -w /drone/src \
   -v $(pwd):/drone/src \
-  drone/drone-fileglob
+  drone/drone-findfiles
 ```

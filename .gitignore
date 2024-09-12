@@ -2,3 +2,4 @@
 release/
 .vscode/
 drone_output.properties
+drone-findfiles

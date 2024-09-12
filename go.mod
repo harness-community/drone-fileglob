@@ -1,4 +1,4 @@
-module github.com/drone/drone-fileglob
+module github.com/harness-community/drone-findfiles
 
 go 1.12
 

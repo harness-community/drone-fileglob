@@ -51,7 +51,7 @@ func cleanupRelativeFilesAndFolders() {
 }
 
 func setupFilesAndFolders() string {
-	tempDir, err := os.MkdirTemp("", "fileglob")
+	tempDir, err := os.MkdirTemp("", "findfiles")
 	fatalIf(err)
 
 	fatalIf(os.MkdirAll(filepath.Join(tempDir, "abc/def"), 0755))

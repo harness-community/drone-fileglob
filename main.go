@@ -7,7 +7,7 @@ package main
 import (
 	"context"
 
-	"github.com/drone/drone-fileglob/plugin"
+	"github.com/harness-community/drone-findfiles/plugin"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
