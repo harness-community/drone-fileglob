@@ -1,6 +1,6 @@
 # drone-findfiles
 
-A plugin to search for files using relative or absolute paths and filter based on [Ant path pattern](https://ant.apache.org/manual/dirtasks.html#patterns).
+A plugin to search for files using relative or absolute paths and filter based on [Ant style pattern](https://ant.apache.org/manual/dirtasks.html#patterns).
 
 To learn how to utilize Drone plugins in Harness CI, please consult the provided [documentation](https://developer.harness.io/docs/continuous-integration/use-ci/use-drone-plugins/run-a-drone-plugin-in-ci).
 
@@ -8,7 +8,7 @@ To learn how to utilize Drone plugins in Harness CI, please consult the provided
 
 The following settings changes this plugin's behavior.
 
-* ```filter```: Ant style pattern to search for files. For example, ```**/*.txt``` searches for all ```.txt``` files in directories.
+* ```glob```: Ant style pattern to search for files. For example, ```**/*.txt``` searches for all ```.txt``` files in directories.
 * ```excludes``` (optional): Pattern to exclude files from the search result. For example, ```**/*.zip``` excludes files with zip extension from the result.
 * ```dir``` (optional) : Directory in which to perform the search, if not specificed use the current directory.
 
@@ -72,7 +72,7 @@ Below is an example to use the plugin inside a Harness CI pipeline.
       connectorRef: harness-docker-connector
       image: harness-community/drone-findfiles:linux-amd64
       settings:
-        filter: "**/*.go"
+        glob: "**/*.go"
 ```
 
 To use the output JSON inside the Harness pipeline use the expression ```<+steps.STEP_ID.output.outputVariables.FILES_INFO>``` where the ```STEP_ID``` is the identifier from the find files plugin. 
@@ -99,8 +99,8 @@ scripts/build.sh
 Execute the plugin from your current working directory:
 
 ```bash
-PLUGIN_FILTER="**/*.yml" \
-PLUGIN_EXCLUDES="**/b.*" \
+PLUGIN_GLOB="**/*.go" \
+PLUGIN_EXCLUDES="**/*_test.go" \
 DRONE_OUTPUT="drone_output.properties" \
 go run main.go
 ```

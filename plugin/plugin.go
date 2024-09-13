@@ -25,7 +25,7 @@ type Args struct {
 	Level string `envconfig:"PLUGIN_LOG_LEVEL"`
 
 	// Ant style pattern Glob pattern to search for files. (required)
-	Filter string `envconfig:"PLUGIN_FILTER"`
+	Filter string `envconfig:"PLUGIN_GLOB"`
 
 	// Glob pattern to exclude files from the search (optional) (default: none)
 	Excludes string `envconfig:"PLUGIN_EXCLUDES"`
