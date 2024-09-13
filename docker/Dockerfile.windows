@@ -1,0 +1,9 @@
+FROM plugins/base:windows-ltsc2022-amd64
+
+USER ContainerAdministrator
+
+ENV GODEBUG=netdns=go
+
+ADD release/windows/amd64/drone-findfiles.exe C:/drone-findfiles.exe
+
+ENTRYPOINT ["C:\\drone-findfiles.exe"]
