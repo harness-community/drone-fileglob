@@ -76,10 +76,23 @@ func setupFilesAndFolders() string {
 }
 
 func Test_validateArg_SunnyDay(t *testing.T) {
+
+	os.Setenv("DRONE_OUTPUT", "/tmp")
+
 	err := validateArgs(Args{
 		Filter: "**/*.txt",
 	})
 	assert.NoError(t, err)
+}
+
+func Test_validateArg_MissingDroneOutput(t *testing.T) {
+
+	os.Unsetenv("DRONE_OUTPUT")
+
+	err := validateArgs(Args{
+		Filter: "**/*.txt",
+	})
+	assert.EqualError(t, err, "missing DRONE_OUTPUT environment variable")
 }
 
 func Test_validateArg_MissingFilter(t *testing.T) {
